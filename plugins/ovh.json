@@ -1,0 +1,81 @@
+{
+	"$schema": "https://raw.githubusercontent.com/invoiceradar/plugins/main/schema.json",
+	"id": "ovh",
+	"name": "OVHcloud",
+	"description": "OVHcloud is a cloud computing company which offers VPS, dedicated servers and other web services.",
+	"homepage": "https://www.ovh.com",
+	"configSchema": {},
+	"checkAuth": [
+		{
+			"action": "navigate",
+			"url": "https://www.ovh.com/manager/"
+		},
+		{
+			"action": "checkElementExists",
+			"selector": ".manager-account-sidebar"
+		}
+	],
+	"startAuth": [
+		{
+			"action": "navigate",
+			"url": "https://www.ovh.com/auth/"
+		},
+		{
+			"action": "waitForElement",
+			"selector": ".manager-account-sidebar",
+			"timeout": 120000
+		}
+	],
+	"getDocuments": [
+		{
+			"action": "navigate",
+			"url": "https://www.ovh.com/manager/#/dedicated/billing/history"
+		},
+		{
+			"action": "waitForNetworkIdle",
+			"timeout": 10000
+		},
+		{
+			"action": "extractAll",
+			"selector": "iframe[role='document'] table tbody tr",
+			"variable": "invoice",
+			"fields": {
+				"id": {
+					"selector": "td:nth-child(2)"
+				},
+				"orderid": {
+					"selector": "td:nth-child(3)"
+				},
+				"date": {
+					"selector": "td:nth-child(4)"
+				},
+				"total": {
+					"selector": "td:nth-child(6)"
+				},
+				"netto": {
+					"selector": "td:nth-child(5)"
+				},
+				"url": {
+					"selector": "td a[href^='https://www.ovh.de/cgi-bin/order/bill.pdf']",
+					"attribute": "href"
+				}
+			},
+			"forEach": [
+				{
+					"action": "downloadPdf",
+					"url": "{{invoice.url}}",
+					"document": {
+						"type": "outgoing_invoice",
+						"id": "{{invoice.id}}",
+						"date": "{{invoice.date}}",
+						"total": "{{invoice.total}}"
+					},
+					"metadata": {
+						"netto": "{{invoice.total}}",
+						"orderid": "{{invoice.orderid}}"
+					}
+				}
+			]
+		}
+	]
+}

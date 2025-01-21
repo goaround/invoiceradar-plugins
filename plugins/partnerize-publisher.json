@@ -1,0 +1,77 @@
+{
+	"$schema": "https://raw.githubusercontent.com/invoiceradar/plugins/main/schema.json",
+	"id": "partnerize-publisher",
+	"name": "Partnerize Publisher",
+	"description": "Partnerize is a global affiliate plattform. This plugin allows you to download invoices from your Partnerize publisher account.",
+	"homepage": "https://partnerize.com/",
+	"note": "Requires Basic Auth to download Invoices",
+	"configSchema": {},
+	"checkAuth": [
+		{
+			"action": "navigate",
+			"url": "https://console.partnerize.com/payments/payments"
+		},
+		{
+			"action": "checkElementExists",
+			"selector": ".accountSwitcher"
+		}
+	],
+	"startAuth": [
+		{
+			"action": "navigate",
+			"url": "https://console.partnerize.com/login/phg/en"
+		},
+		{
+			"action": "waitForElement",
+			"selector": ".accountSwitcher",
+			"timeout": 120000
+		}
+	],
+	"getDocuments": [
+		{
+			"action": "navigate",
+			"url": "https://console.partnerize.com/payments/payments"
+		},
+		{
+			"action": "waitForNetworkIdle",
+			"timeout": 10000
+		},
+		{
+			"action": "extractAll",
+			"selector": "table tbody tr",
+			"variable": "invoice",
+			"fields": {
+				"id": {
+					"selector": "td:nth-child(1)"
+				},
+				"date": {
+					"selector": "td:nth-child(4)"
+				},
+				"total": {
+					"selector": "td:nth-child(2)"
+				},
+				"url": {
+					"selector": "a[title='Download']",
+					"attribute": "href"
+				},
+				"publisherId": {
+					"selector": "td:nth-child(1)",
+					"transform": "(v) => v.split('-')[1]"
+				}
+			},
+			"forEach": [
+
+				{
+					"action": "downloadPdf",
+					"url": "https://console.partnerize.com/user/publisher/{{invoice.publisherId}}/selfbill/{{invoice.id}}.pdf",
+					"document": {
+						"type": "outgoing_invoice",
+						"id": "{{invoice.id}}",
+						"date": "{{invoice.date}}",
+						"total": "{{invoice.total}}"
+					}
+				}
+			]
+		}
+	]
+}

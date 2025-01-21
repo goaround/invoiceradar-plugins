@@ -1,0 +1,86 @@
+{
+	"$schema": "https://raw.githubusercontent.com/invoiceradar/plugins/main/schema.json",
+	"id": "digidip-publisher",
+	"name": "Digidip Publisher",
+	"description": "Digidip is a meta affiliate plattform. This plugin allows you to download invoices from your Digidip publisher account.",
+	"homepage": "https://digidip.net/",
+	"note": "Requires secound login to download invoices",
+	"configSchema": {},
+	"checkAuth": [
+		{
+			"action": "navigate",
+			"url": "https://digidip.net/publisher/dashboard"
+		},
+		{
+			"action": "checkElementExists",
+			"selector": "mat-sidenav-container"
+		}
+	],
+	"startAuth": [
+		{
+			"action": "navigate",
+			"url": "https://digidip.net/publisher/login"
+		},
+		{
+			"action": "waitForElement",
+			"selector": "mat-sidenav-container",
+			"timeout": 120000
+		}
+	],
+	"getDocuments": [
+		{
+			"action": "navigate",
+			"url": "https://digidip.net/publisher/disbursements/list"
+		},
+		{
+			"action": "waitForNetworkIdle",
+			"timeout": 10000
+		},
+		{
+			"action": "extractAll",
+			"selector": "table tbody tr",
+			"variable": "invoice",
+			"fields": {
+				"id": {
+					"selector": "td:nth-child(2)"
+				},
+				"date": {
+					"selector": "td:nth-child(5)"
+				},
+				"total": {
+					"selector": "td:nth-child(4)"
+				},
+				"netto": {
+					"selector": "td.text-right"
+				},
+				"url": {
+					"selector": "td a",
+					"attribute": "href"
+				}
+			},
+			"forEach": [
+				{
+					"action": "navigate",
+					"url": "https://digidip.net/publisher/disbursements/detail/{{invoice.id}}"
+				},
+				{
+					"action": "click",
+					"selector": "button.secondaryBtn"
+				},
+				{
+					"action": "waitForPdfDownload",
+					"timeout": 10000,
+					"document": {
+						"type": "outgoing_invoice",
+						"id": "{{invoice.id}}",
+						"date": "{{invoice.date}}",
+						"total": "{{invoice.total}}"
+					},
+					"metadata": {
+						"netto": "{{invoice.total}}"
+					}
+				}
+			]
+		}
+	]
+}

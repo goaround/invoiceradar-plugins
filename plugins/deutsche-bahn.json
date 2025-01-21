@@ -1,0 +1,130 @@
+{
+	"$schema": "https://raw.githubusercontent.com/invoiceradar/plugins/main/schema.json",
+	"id": "deutsche-bahn",
+	"name": "Deutsche Bahn",
+	"description": "Deutsche Bahn. This plugin allows you to download invoices from your bahn.de account.",
+	"homepage": "https://www.bahn.de",
+	"configSchema": {},
+	"note": "Unzuverlässig",
+	"checkAuth": [
+		{
+			"action": "navigate",
+			"url": "https://www.bahn.de/buchung/reise"
+		},
+		{
+			"action": "checkElementExists",
+			"selector": ".auth-status-logged-in"
+		}
+	],
+	"startAuth": [
+		{
+			"action": "navigate",
+			"url": "https://www.bahn.de/"
+		},
+		{
+			"action": "waitForElement",
+			"selector": "#js-login-nav",
+			"timeout": 1200
+		},
+		{
+			"action": "click",
+			"selector": "#js-login-nav"
+		},
+		{
+			"action": "waitForElement",
+			"selector": ".auth-status-logged-in",
+			"timeout": 120000
+		}
+	],
+	"getDocuments": [
+		{
+			"action": "navigate",
+			"url": "https://www.bahn.de/buchung/reiseuebersicht/vergangene"
+		},
+		{
+			"action": "waitForNetworkIdle",
+			"timeout": 10000
+		},
+		{
+			"action": "extractAll",
+			"selector": ".reise",
+			"variable": "trip",
+			"fields": {
+				"url": {
+					"selector": "a.reise__details",
+					"attribute": "href"
+				}
+			},
+			"forEach": [
+				{
+					"action": "navigate",
+					"url": "https://www.bahn.de{{trip.url}}"
+				},
+				{
+					"action": "waitForElement",
+					"selector": ".test-anlagedatum",
+					"timeout": 10000
+				},
+				{
+					"action": "extract",
+					"variable": "invoice",
+					"fields": {
+						"id": {
+							"selector": ".reisedetails-page",
+							"attribute": "auftragsnummer"
+						},
+						"date": {
+							"selector": ".test-anlagedatum",
+							"transform": "(date) => date.replace('gebucht am ', '')"
+						},
+						"traveldate": {
+							"selector": ".reisezeit-datum__datum",
+							"attribute": "datetime"
+						},
+						"total": {
+							"selector": ".reise-angebot__preis"
+						}
+					}
+				},
+				{
+					"action": "if",
+					"script": "document.querySelector('button.db-web-download-button__button')",
+					"then": [
+					  {
+						"action": "click",
+						"selector": ".button.db-web-download-button__button"
+					  }
+					],
+					"else": [
+						{
+							"action": "click",
+							"selector": "button.rechnung-abruf__create-rechnung-button, button.db-web-download-button__button"
+						},
+						{
+							"action": "waitForElement",
+							"selector": "button.rechnungsadresse-input-fields__submit-button",
+							"timeout": 20000
+						},
+						{
+							"action": "click",
+							"selector": "button.rechnungsadresse-input-fields__submit-button"
+						}
+					]
+				},
+				{
+					"action": "waitForPdfDownload",
+					"timeout": 10000,
+					"document": {
+						"type": "outgoing_invoice",
+						"id": "{{invoice.id}}",
+						"date": "{{invoice.date}}",
+						"total": "{{invoice.total}}"
+					},
+					"metadata": {
+						"traveldate": "{{invoice.traveldate}}"
+					}
+				}
+			]
+		}
+	]
+}

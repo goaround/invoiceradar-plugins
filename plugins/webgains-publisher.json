@@ -1,0 +1,53 @@
+{
+	"$schema": "https://raw.githubusercontent.com/invoiceradar/plugins/main/schema.json",
+	"id": "webgains-publisher",
+	"name": "Webgains Publisher",
+	"description": "Webgains is a global affiliate plattform. This plugin allows you to download invoices from your Webgains publisher account.",
+	"homepage": "https://www.webgains.com",
+	"configSchema": {
+		"publisherId": {
+			"type": "string",
+			"title": "Publisher ID",
+			"description": "Your Publisher ID",
+			"required": true
+		},
+		"token": {
+			"type": "string",
+			"title": "Personal Access Token",
+			"description": "Create a Personal Access Token in the User Management",
+			"required": true
+		}
+	},
+	"checkAuth": [
+
+	],
+	"startAuth": [],
+	"getDocuments": [
+		{
+			"action": "extractAll",
+			"variable": "invoice",
+			"script": "fetch('https://platform-api.webgains.com/publishers/{{config.publisherId}}/payments', {\n  method: 'GET',\n  credentials: 'include',\n  headers: { 'Authorization': 'Bearer {{config.token}}', 'Content-Type': 'application/pdf' }}).then((res) => res.json().data.map(item => ({\n  id: item.id,\n  date: item.date,\n  total: item.payment_amount.amount/10000,\n amount: item.amount.amount/10000,\n currency: item.payment_amount.currency}))\n)",
+			"forEach": [
+				{
+					"action": "extract",
+					"variable": "base64Pdf",
+					"script": "fetch('https://platform-api.webgains.com/publishers/{{config.publisherId}}/payments/{{invoice.id}}/invoice', {\n  method: 'GET',\n  credentials: 'include',\n  headers: { 'Authorization': 'Bearer {{config.token}}', 'Content-Type': 'application/pdf' }}).then((res) => res.body())"
+				},
+				{
+					"action": "downloadBase64Pdf",
+					"base64": "{{base64Pdf}}",
+					"document": {
+						"type": "outgoing_invoice",
+						"id": "{{invoice.id}}",
+						"date": "{{invoice.date}}",
+						"total": "{{invoice.total}} {{invoice.currency}}"
+					},
+					"metadata": {
+						"amount": "{{invoice.amount}} {{invoice.currency}}",
+						"currency": "{{invoice.currency}}"
+					}
+				}
+			]
+		}
+	]
+}
